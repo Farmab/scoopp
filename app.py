@@ -5,14 +5,14 @@ from io import BytesIO
 
 st.set_page_config(page_title="Daily Expense Tracker", layout="wide")
 
-# Styled header
+# Stylish Header
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap');
     .montserrat-title {
         font-family: 'Montserrat', sans-serif;
         font-weight: 700;
-        font-size: 90px;
+        font-size: 40px;
         color: yellow;
         text-align: center;
         margin-bottom: 10px;
@@ -28,9 +28,9 @@ st.markdown("""
     <div class="montserrat-title">Scoop Company</div>
 """, unsafe_allow_html=True)
 
-st.title("📘 Daily Invoices And Expenses")
+st.title("📘 Daily Expense Entry Web App")
 
-# Session initialization
+# Initialize session state
 if "expenses" not in st.session_state:
     st.session_state.expenses = pd.DataFrame(columns=[
         "Company", "Subject", "Quantity", "Unit",
@@ -40,7 +40,7 @@ if "expenses" not in st.session_state:
 if "edit_index" not in st.session_state:
     st.session_state.edit_index = None
 
-# ➕ Add new invoice
+# ➕ Add New Invoice
 st.subheader("➕ Add New Expense")
 common_units = ["kg", "L", "box", "carton", "piece"]
 
@@ -114,11 +114,11 @@ if not filtered_df.empty and "unpaid" in filtered_df["Status"].values:
 else:
     st.info("No unpaid expenses in the current filter.")
 
-# 🔃 Split tables
+# Split filtered data
 unpaid_df = filtered_df[filtered_df["Status"] == "unpaid"]
 paid_df = filtered_df[filtered_df["Status"] == "paid"]
 
-# ❗ Unpaid invoices table
+# ❗ Unpaid Table
 if not unpaid_df.empty:
     st.markdown("## ❗ Unpaid Invoices")
     for i, row in unpaid_df.iterrows():
@@ -135,19 +135,33 @@ if not unpaid_df.empty:
             if st.button("✏️", key=f"edit_{i}"):
                 st.session_state.edit_index = i
         with cols[4]:
-            if st.button("🗑", key=f"delete_{i}"):
+            if st.button("🗑", key=f"delete_unpaid_{i}"):
                 st.session_state.expenses.drop(index=i, inplace=True)
                 st.session_state.expenses.reset_index(drop=True, inplace=True)
                 st.rerun()
 else:
     st.info("No unpaid invoices in the filtered list.")
 
-# ✅ Paid invoices
+# ✅ Paid Table with delete buttons
 if not paid_df.empty:
     st.markdown("## ✅ Paid Invoices")
-    st.dataframe(paid_df.style.set_table_attributes('class="styled-table"'), use_container_width=True)
+    for i, row in paid_df.iterrows():
+        cols = st.columns([3, 2, 2, 1])
+        with cols[0]:
+            st.write(f"**{row['Company']}** — {row['Subject']}")
+        with cols[1]:
+            st.write(f"{row['Quantity']} {row['Unit']}")
+            st.write(f"{row['Price per Unit']} {row['Currency']}")
+        with cols[2]:
+            st.write(f"💰 {row['Total Price']} {row['Currency']}")
+            st.write(f"{row['Date']}")
+        with cols[3]:
+            if st.button("🗑", key=f"delete_paid_{i}"):
+                st.session_state.expenses.drop(index=i, inplace=True)
+                st.session_state.expenses.reset_index(drop=True, inplace=True)
+                st.rerun()
 
-# ✏️ Edit invoice
+# ✏️ Edit Form
 if st.session_state.edit_index is not None:
     idx = st.session_state.edit_index
     row = st.session_state.expenses.loc[idx]
@@ -188,7 +202,7 @@ with col2:
 with col3:
     st.metric("✅ Paid Total", f"{paid_total:,.2f}")
 
-# 📥 Export
+# 📥 Excel Export
 def to_excel(df):
     output = BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
