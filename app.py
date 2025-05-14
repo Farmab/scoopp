@@ -12,7 +12,7 @@ st.markdown("""
     .montserrat-title {
         font-family: 'Montserrat', sans-serif;
         font-weight: 700;
-        font-size: 40px;
+        font-size: 120px;
         color: yellow;
         text-align: center;
         margin-bottom: 10px;
