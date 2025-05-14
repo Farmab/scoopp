@@ -28,7 +28,7 @@ st.markdown("""
     <div class="montserrat-title">Scoop Company</div>
 """, unsafe_allow_html=True)
 
-st.title("📘 مەسروفات و وەسڵی رۆژانە")
+st.title("📘 Daily Invoices And Expenses")
 
 # Session initialization
 if "expenses" not in st.session_state:
