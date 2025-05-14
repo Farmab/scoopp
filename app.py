@@ -50,16 +50,20 @@ with st.sidebar.form("entry_form"):
 
 
     if submitted:
-        total_price = quantity * price_per_unit
-        new_row = {
-            "Date": pd.to_datetime(date),
-            "Company": company,
-            "Item ID": item_id,
-            "Item Name": item_name,
-            "Quantity": quantity,
-            "Unit": unit,
-            "Price per Unit": price_per_unit,
-            "Total Price": total_price
+currency_symbol = "د.ع" if currency == "IQD" else "$"
+
+new_row = {
+    "Date": pd.to_datetime(date),
+    "Company": company,
+    "Item ID": item_id,
+    "Item Name": item_name,
+    "Quantity": quantity,
+    "Unit": unit,
+    "Price per Unit": f"{price_per_unit:,.2f} {currency_symbol}",
+    "Total Price": f"{quantity * price_per_unit:,.2f} {currency_symbol}",
+    "Currency": currency
+}
+
         }
         df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
         df.to_csv(DATA_FILE, index=False)
