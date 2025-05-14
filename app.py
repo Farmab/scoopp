@@ -1,142 +1,112 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime
 import os
-import io
+from datetime import date
 import plotly.express as px
 
-# ---------------------- Constants ----------------------
-DATA_FILE = "invoices.csv"
-USER_CREDENTIALS = {"ferman": "mypassword123"}
-CURRENCY_SYMBOLS = {"IQD": "د.ع", "USD": "$"}
+# --- Set page config ---
+st.set_page_config(page_title="OneProAgency Manager", layout="centered")
 
-# ------------------ Session State ----------------------
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-    st.session_state.username = ""
+# --- Display saved logo if exists ---
+if os.path.exists("logo.png"):
+    st.image("logo.png", width=150)
 
-# --------------------- Login UI ------------------------
-def login():
-    st.markdown("""
-        <h1 style='text-align: center; background: linear-gradient(to right, #4facfe, #00f2fe); 
-        -webkit-background-clip: text; color: transparent;'>🔐 Secure Login</h1>
-    """, unsafe_allow_html=True)
-    with st.form("login_form", clear_on_submit=True):
-        username = st.text_input("Username")
-        password = st.text_input("Password", type="password")
-        submitted = st.form_submit_button("Login")
+# --- Upload logo (only once) ---
+st.sidebar.header("🖼️ Upload Logo")
+logo_file = st.sidebar.file_uploader("Upload your company logo", type=["png", "jpg", "jpeg"])
+if logo_file:
+    with open("logo.png", "wb") as f:
+        f.write(logo_file.getbuffer())
+    st.sidebar.success("Logo uploaded successfully!")
+    st.experimental_rerun()
+
+# --- Tabs for Invoices and Expenses ---
+tab1, tab2 = st.tabs(["🧾 Invoices", "💰 Daily Expenses"])
+
+# --- Invoice Management ---
+with tab1:
+    st.header("🧾 Invoice Management")
+
+    if not os.path.exists("data"):
+        os.makedirs("data")
+
+    invoice_file = "data/invoices.csv"
+
+    with st.form("invoice_form"):
+        customer = st.text_input("Customer Name")
+        invoice_no = st.text_input("Invoice Number")
+        invoice_amount = st.number_input("Amount ($)", min_value=0.0)
+        submitted = st.form_submit_button("Add Invoice")
+
         if submitted:
-            if USER_CREDENTIALS.get(username) == password:
-                st.session_state.logged_in = True
-                st.session_state.username = username
-            else:
-                st.error("❌ Invalid username or password")
+            new_invoice = pd.DataFrame([[date.today(), customer, invoice_no, invoice_amount]],
+                                       columns=["Date", "Customer", "Invoice No", "Amount"])
+            if os.path.exists(invoice_file):
+                old = pd.read_csv(invoice_file)
+                new_invoice = pd.concat([old, new_invoice], ignore_index=True)
+            new_invoice.to_csv(invoice_file, index=False)
+            st.success("Invoice added successfully!")
 
-if not st.session_state.logged_in:
-    login()
-    st.stop()
+    if os.path.exists(invoice_file):
+        st.subheader("📄 All Invoices")
+        df_invoices = pd.read_csv(invoice_file)
+        st.dataframe(df_invoices)
+        st.metric("Total Invoices", f"${df_invoices['Amount'].sum():.2f}")
+        
+        # Export to Excel
+        st.download_button(
+            label="Download Invoices as Excel",
+            data=df_invoices.to_excel(index=False, engine='openpyxl'),
+            file_name="invoices.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
 
-# -------------------- Load Data ------------------------
-if os.path.exists(DATA_FILE):
-    df = pd.read_csv(DATA_FILE, parse_dates=["Date"])
-else:
-    df = pd.DataFrame(columns=["Date", "Company", "Item ID", "Item Name", "Quantity", "Unit", "Price per Unit", "Total Price", "Currency"])
+# --- Daily Expense Tracker ---
+with tab2:
+    st.header("💰 Daily Expense Tracker")
 
-# -------------------- Sidebar Form ----------------------
-st.sidebar.header("➕ Add New Invoice")
-with st.sidebar.form("entry_form"):
-    date = st.date_input("Invoice Date", datetime.today())
-    company = st.text_input("Company Name")
-    item_id = st.text_input("Item ID")
-    item_name = st.text_input("Item Name")
-    quantity = st.number_input("Quantity", min_value=0.0, step=0.1)
-    unit = st.selectbox("Unit", ["Carton", "Box", "Kilogram", "Liter", "Piece"])
-    price_per_unit = st.number_input("Price per Unit", min_value=0.0, step=0.1)
-    currency = st.radio("Currency", ["IQD", "USD"], horizontal=True)
-    submitted = st.form_submit_button("Submit")
+    expense_file = "data/expenses.csv"
 
-    if submitted:
-        symbol = CURRENCY_SYMBOLS[currency]
-        total = quantity * price_per_unit
-        new_row = {
-            "Date": pd.to_datetime(date),
-            "Company": company,
-            "Item ID": item_id,
-            "Item Name": item_name,
-            "Quantity": quantity,
-            "Unit": unit,
-            "Price per Unit": f"{price_per_unit:,.2f} {symbol}",
-            "Total Price": f"{total:,.2f} {symbol}",
-            "Currency": currency
-        }
-        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-        df.to_csv(DATA_FILE, index=False)
-        st.sidebar.success("✅ Invoice added successfully!")
+    with st.form("expense_form"):
+        exp_date = st.date_input("Date", value=date.today())
+        category = st.selectbox("Category", ["Food", "Transport", "Utilities", "Shopping", "Other"])
+        description = st.text_input("Description")
+        method = st.selectbox("Payment Method", ["Cash", "Card", "Transfer", "Other"])
+        exp_amount = st.number_input("Amount ($)", min_value=0.0)
+        exp_submit = st.form_submit_button("Add Expense")
 
-# -------------------- Main UI --------------------------
-uploaded_logo = st.sidebar.file_uploader("Upload Logo (PNG)", type=["png"], key="logo")
-if uploaded_logo is not None:
-    with open("app_logo.png", "wb") as f:
-        f.write(uploaded_logo.read())
+        if exp_submit:
+            new_expense = pd.DataFrame([[exp_date, category, description, method, exp_amount]],
+                                       columns=["Date", "Category", "Description", "Payment Method", "Amount"])
+            if os.path.exists(expense_file):
+                old_expenses = pd.read_csv(expense_file)
+                new_expense = pd.concat([old_expenses, new_expense], ignore_index=True)
+            new_expense.to_csv(expense_file, index=False)
+            st.success("Expense recorded!")
 
-if os.path.exists("app_logo.png"):
-    with open("app_logo.png", "rb") as logo_file:
-        st.image(logo_file.read(), width=150)
+    if os.path.exists(expense_file):
+        st.subheader("📊 All Expenses")
+        df_exp = pd.read_csv(expense_file)
+        st.dataframe(df_exp)
+        st.metric("Total Expenses", f"${df_exp['Amount'].sum():.2f}")
 
-col1, col2 = st.columns(2)
-with col1:
-    start_date = st.date_input("🕛 Start Date", df["Date"].min() if not df.empty else datetime.today())
-    search_company = st.text_input("👤 Search by Company")
-with col2:
-    end_date = st.date_input("🕒 End Date", df["Date"].max() if not df.empty else datetime.today())
-    search_item = st.text_input("🏪 Search by Item Name")
+        # Export to Excel
+        st.download_button(
+            label="Download Expenses as Excel",
+            data=df_exp.to_excel(index=False, engine='openpyxl'),
+            file_name="expenses.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
 
-# -------------------- Filtering ------------------------
-filtered_df = df[(df["Date"] >= pd.to_datetime(start_date)) &
-                 (df["Date"] <= pd.to_datetime(end_date)) &
-                 (df["Company"].str.contains(search_company, case=False, na=False)) &
-                 (df["Item Name"].str.contains(search_item, case=False, na=False))]
+        # Pie chart of categories
+        st.subheader("📈 Expense by Category")
+        cat_summary = df_exp.groupby("Category")["Amount"].sum().reset_index()
+        fig = px.pie(cat_summary, names="Category", values="Amount", title="Spending Breakdown")
+        st.plotly_chart(fig)
 
-st.markdown("### 📄 Filtered Invoices")
-st.dataframe(filtered_df, height=600, use_container_width=True)
-
-# -------------------- Summary + Charts --------------------------
-if not filtered_df.empty:
-    temp_df = filtered_df.copy()
-    if "Currency" in temp_df.columns:
-        temp_df["Numeric Total"] = temp_df["Total Price"].astype(str).str.extract(r"([0-9,.]+)")[0].replace({',': ''}, regex=True).astype(float)
-        summary = temp_df.groupby(["Company", "Currency"])["Numeric Total"].sum().reset_index()
-        summary["Total Owed"] = summary.apply(lambda row: f"{row['Numeric Total']:,.2f} {CURRENCY_SYMBOLS.get(row['Currency'], '')}" , axis=1)
-        summary_display = summary[["Company", "Total Owed"]]
-
-        st.markdown("### 📊 Summary by Company")
-        st.dataframe(summary_display, height=400, use_container_width=True)
-
-        # Chart
-        st.markdown("### 📈 Visual Summary")
-        chart = px.bar(summary, x="Company", y="Numeric Total", color="Currency",
-                      title="Total Purchases per Company",
-                      labels={"Numeric Total": "Total Amount"},
-                      color_discrete_sequence=px.colors.sequential.Bluered)
-        st.plotly_chart(chart, use_container_width=True)
-
-        # ----------------- Excel Export -------------------
-        invoice_buffer = io.BytesIO()
-        summary_buffer = io.BytesIO()
-        with pd.ExcelWriter(invoice_buffer, engine='openpyxl') as writer:
-            filtered_df.to_excel(writer, index=False, sheet_name='Invoices')
-        with pd.ExcelWriter(summary_buffer, engine='openpyxl') as writer:
-            summary_display.to_excel(writer, index=False, sheet_name='Summary')
-        invoice_buffer.seek(0)
-        summary_buffer.seek(0)
-
-        st.markdown("### 📂 Download Reports")
-        col3, col4 = st.columns(2)
-        with col3:
-            st.download_button("Download Invoices (Excel)", data=invoice_buffer, file_name="invoices.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-        with col4:
-            st.download_button("Download Summary (Excel)", data=summary_buffer, file_name="summary.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-    else:
-        st.warning("Missing 'Currency' column in data. Please recheck invoice entries.")
-else:
-    st.info("No matching invoices found. Try adjusting your filters.")
+        # Bar chart by date
+        st.subheader("📊 Daily Spending")
+        df_exp["Date"] = pd.to_datetime(df_exp["Date"])
+        daily_summary = df_exp.groupby("Date")["Amount"].sum().reset_index()
+        fig2 = px.bar(daily_summary, x="Date", y="Amount", title="Daily Expenses")
+        st.plotly_chart(fig2)
