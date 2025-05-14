@@ -92,7 +92,7 @@ st.dataframe(filtered_df, use_container_width=True)
 # -------------------- Summary --------------------------
 if not filtered_df.empty:
     temp_df = filtered_df.copy()
-    temp_df["Numeric Total"] = temp_df["Total Price"].str.extract(r"([0-9,.]+)").replace({',': ''}, regex=True).astype(float)
+    temp_df["Numeric Total"] = temp_df["Total Price"].astype(str).str.extract(r"([0-9,.]+)")[0].replace({',': ''}, regex=True).astype(float)
     summary = temp_df.groupby(["Company", "Currency"])["Numeric Total"].sum().reset_index()
     summary["Total Owed"] = summary.apply(lambda row: f"{row['Numeric Total']:,.2f} {CURRENCY_SYMBOLS[row['Currency']]}" , axis=1)
     summary_display = summary[["Company", "Total Owed"]]
