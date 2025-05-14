@@ -74,7 +74,8 @@ with st.sidebar.form("entry_form"):
         st.sidebar.success("✅ Invoice added successfully!")
 
 # -------------------- Main UI --------------------------
-st.image("english logo.png", width=150)
+with open("english logo.png", "rb") as logo_file:
+    st.image(logo_file.read(), width=150)
 st.markdown("""
     <h1 style='text-align: center; background: linear-gradient(to right, #667eea, #764ba2); 
     -webkit-background-clip: text; color: transparent;'>📆 Business Invoice Manager</h1>
