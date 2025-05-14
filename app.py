@@ -92,29 +92,32 @@ st.dataframe(filtered_df, use_container_width=True)
 # -------------------- Summary --------------------------
 if not filtered_df.empty:
     temp_df = filtered_df.copy()
-    temp_df["Numeric Total"] = temp_df["Total Price"].astype(str).str.extract(r"([0-9,.]+)")[0].replace({',': ''}, regex=True).astype(float)
-    summary = temp_df.groupby(["Company", "Currency"])["Numeric Total"].sum().reset_index()
-    summary["Total Owed"] = summary.apply(lambda row: f"{row['Numeric Total']:,.2f} {CURRENCY_SYMBOLS[row['Currency']]}" , axis=1)
-    summary_display = summary[["Company", "Total Owed"]]
+    if "Currency" in temp_df.columns:
+        temp_df["Numeric Total"] = temp_df["Total Price"].astype(str).str.extract(r"([0-9,.]+)")[0].replace({',': ''}, regex=True).astype(float)
+        summary = temp_df.groupby(["Company", "Currency"])["Numeric Total"].sum().reset_index()
+        summary["Total Owed"] = summary.apply(lambda row: f"{row['Numeric Total']:,.2f} {CURRENCY_SYMBOLS.get(row['Currency'], '')}" , axis=1)
+        summary_display = summary[["Company", "Total Owed"]]
 
-    st.markdown("### 📊 Summary by Company")
-    st.dataframe(summary_display, use_container_width=True)
+        st.markdown("### 📊 Summary by Company")
+        st.dataframe(summary_display, use_container_width=True)
 
-    # ----------------- Excel Export -------------------
-    invoice_buffer = io.BytesIO()
-    summary_buffer = io.BytesIO()
-    with pd.ExcelWriter(invoice_buffer, engine='openpyxl') as writer:
-        filtered_df.to_excel(writer, index=False, sheet_name='Invoices')
-    with pd.ExcelWriter(summary_buffer, engine='openpyxl') as writer:
-        summary_display.to_excel(writer, index=False, sheet_name='Summary')
-    invoice_buffer.seek(0)
-    summary_buffer.seek(0)
+        # ----------------- Excel Export -------------------
+        invoice_buffer = io.BytesIO()
+        summary_buffer = io.BytesIO()
+        with pd.ExcelWriter(invoice_buffer, engine='openpyxl') as writer:
+            filtered_df.to_excel(writer, index=False, sheet_name='Invoices')
+        with pd.ExcelWriter(summary_buffer, engine='openpyxl') as writer:
+            summary_display.to_excel(writer, index=False, sheet_name='Summary')
+        invoice_buffer.seek(0)
+        summary_buffer.seek(0)
 
-    st.markdown("### 📂 Download Reports")
-    col3, col4 = st.columns(2)
-    with col3:
-        st.download_button("Download Invoices (Excel)", data=invoice_buffer, file_name="invoices.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-    with col4:
-        st.download_button("Download Summary (Excel)", data=summary_buffer, file_name="summary.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        st.markdown("### 📂 Download Reports")
+        col3, col4 = st.columns(2)
+        with col3:
+            st.download_button("Download Invoices (Excel)", data=invoice_buffer, file_name="invoices.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        with col4:
+            st.download_button("Download Summary (Excel)", data=summary_buffer, file_name="summary.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    else:
+        st.warning("Missing 'Currency' column in data. Please recheck invoice entries.")
 else:
     st.info("No matching invoices found. Try adjusting your filters.")
