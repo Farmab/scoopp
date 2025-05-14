@@ -3,6 +3,7 @@ import pandas as pd
 from datetime import datetime
 import os
 import io
+import plotly.express as px
 
 # ---------------------- Constants ----------------------
 DATA_FILE = "invoices.csv"
@@ -16,7 +17,10 @@ if "logged_in" not in st.session_state:
 
 # --------------------- Login UI ------------------------
 def login():
-    st.markdown("<h1 style='text-align: center;'>🔐 Secure Login</h1>", unsafe_allow_html=True)
+    st.markdown("""
+        <h1 style='text-align: center; background: linear-gradient(to right, #4facfe, #00f2fe); 
+        -webkit-background-clip: text; color: transparent;'>🔐 Secure Login</h1>
+    """, unsafe_allow_html=True)
     with st.form("login_form", clear_on_submit=True):
         username = st.text_input("Username")
         password = st.text_input("Password", type="password")
@@ -70,7 +74,11 @@ with st.sidebar.form("entry_form"):
         st.sidebar.success("✅ Invoice added successfully!")
 
 # -------------------- Main UI --------------------------
-st.markdown("<h1 style='text-align: center;'>📆 Business Invoice Manager</h1>", unsafe_allow_html=True)
+st.image("english logo.png", width=150)
+st.markdown("""
+    <h1 style='text-align: center; background: linear-gradient(to right, #667eea, #764ba2); 
+    -webkit-background-clip: text; color: transparent;'>📆 Business Invoice Manager</h1>
+""", unsafe_allow_html=True)
 
 col1, col2 = st.columns(2)
 with col1:
@@ -87,9 +95,9 @@ filtered_df = df[(df["Date"] >= pd.to_datetime(start_date)) &
                  (df["Item Name"].str.contains(search_item, case=False, na=False))]
 
 st.markdown("### 📄 Filtered Invoices")
-st.dataframe(filtered_df, use_container_width=True)
+st.dataframe(filtered_df, height=600, use_container_width=True)
 
-# -------------------- Summary --------------------------
+# -------------------- Summary + Charts --------------------------
 if not filtered_df.empty:
     temp_df = filtered_df.copy()
     if "Currency" in temp_df.columns:
@@ -99,7 +107,15 @@ if not filtered_df.empty:
         summary_display = summary[["Company", "Total Owed"]]
 
         st.markdown("### 📊 Summary by Company")
-        st.dataframe(summary_display, use_container_width=True)
+        st.dataframe(summary_display, height=400, use_container_width=True)
+
+        # Chart
+        st.markdown("### 📈 Visual Summary")
+        chart = px.bar(summary, x="Company", y="Numeric Total", color="Currency",
+                      title="Total Purchases per Company",
+                      labels={"Numeric Total": "Total Amount"},
+                      color_discrete_sequence=px.colors.sequential.Bluered)
+        st.plotly_chart(chart, use_container_width=True)
 
         # ----------------- Excel Export -------------------
         invoice_buffer = io.BytesIO()
