@@ -10,6 +10,8 @@ USER_CREDENTIALS = {"admin": "1234"}  # simple login system (for demo)
 # Session management
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
+if "username" not in st.session_state:
+    st.session_state.username = ""
 
 def login():
     st.title("🔐 Login")
@@ -18,13 +20,14 @@ def login():
     if st.button("Login"):
         if USER_CREDENTIALS.get(username) == password:
             st.session_state.logged_in = True
-            st.experimental_rerun()
+            st.session_state.username = username
         else:
-            st.error("Invalid credentials")
+            st.error("❌ Invalid username or password")
 
 if not st.session_state.logged_in:
     login()
     st.stop()
+
 
 # Load or initialize data
 if os.path.exists(DATA_FILE):
