@@ -5,6 +5,20 @@ from io import BytesIO
 
 st.set_page_config(page_title="Daily Expense Tracker", layout="wide")
 
+# Load Montserrat font and style the header
+st.markdown("""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap');
+    .montserrat-title {
+        font-family: 'Montserrat', sans-serif;
+        font-weight: 700;
+        font-size: 40px;
+        color: #333333;
+    }
+    </style>
+    <div class="montserrat-title">Scoop Company</div>
+""", unsafe_allow_html=True)
+
 st.title("📘 Daily Expense Entry Web App")
 
 # Initialize session state to store entries
@@ -18,13 +32,17 @@ if "expenses" not in st.session_state:
 # Add new expense entry
 st.subheader("➕ Add New Expense")
 
+common_units = ["kg", "L", "box", "carton", "piece"]
+
 with st.form("expense_form"):
     col1, col2 = st.columns(2)
     with col1:
         company = st.text_input("Company")
         subject = st.text_input("Subject")
         quantity = st.number_input("Quantity", min_value=0.0, format="%.2f")
-        unit = st.text_input("Unit (e.g., kg, box)")
+        selected_unit = st.selectbox("Choose a Unit", options=common_units)
+        custom_unit = st.text_input("Or enter a custom Unit")
+        unit = custom_unit if custom_unit else selected_unit
         price_per_unit = st.number_input("Price per Unit", min_value=0.0, format="%.2f")
     with col2:
         currency = st.selectbox("Currency", ["IQD", "$"])
