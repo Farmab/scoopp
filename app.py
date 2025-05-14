@@ -5,14 +5,14 @@ from io import BytesIO
 
 st.set_page_config(page_title="Daily Expense Tracker", layout="wide")
 
-# Stylish header
+# Styled header
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap');
     .montserrat-title {
         font-family: 'Montserrat', sans-serif;
         font-weight: 700;
-        font-size: 40px;
+        font-size: 90px;
         color: yellow;
         text-align: center;
         margin-bottom: 10px;
@@ -28,9 +28,9 @@ st.markdown("""
     <div class="montserrat-title">Scoop Company</div>
 """, unsafe_allow_html=True)
 
-st.title("📘 Daily Expense Entry Web App")
+st.title("📘 مەسروفات و وەسڵی رۆژانە")
 
-# Initialize session state
+# Session initialization
 if "expenses" not in st.session_state:
     st.session_state.expenses = pd.DataFrame(columns=[
         "Company", "Subject", "Quantity", "Unit",
@@ -40,7 +40,7 @@ if "expenses" not in st.session_state:
 if "edit_index" not in st.session_state:
     st.session_state.edit_index = None
 
-# Add new invoice
+# ➕ Add new invoice
 st.subheader("➕ Add New Expense")
 common_units = ["kg", "L", "box", "carton", "piece"]
 
@@ -76,8 +76,8 @@ with st.form("add_expense", clear_on_submit=True):
         st.success("✅ Expense added successfully!")
         st.rerun()
 
-# Filters
-st.sidebar.header("🔍 Filter Expenses")
+# 🔍 Filters
+st.sidebar.header("Filter Expenses")
 df = st.session_state.expenses
 
 company_filter = st.sidebar.multiselect("Company", df["Company"].unique())
@@ -101,7 +101,7 @@ if len(date_range) == 2:
         (filtered_df["Date"] <= pd.to_datetime(date_range[1]))
     ]
 
-# Bulk unpaid to paid
+# 🔄 Bulk unpaid to paid
 st.markdown("### 🔄 Monthly Payment Update")
 if not filtered_df.empty and "unpaid" in filtered_df["Status"].values:
     if st.button("✅ Mark All Filtered Unpaid as Paid"):
@@ -114,11 +114,11 @@ if not filtered_df.empty and "unpaid" in filtered_df["Status"].values:
 else:
     st.info("No unpaid expenses in the current filter.")
 
-# Separate filtered data
+# 🔃 Split tables
 unpaid_df = filtered_df[filtered_df["Status"] == "unpaid"]
 paid_df = filtered_df[filtered_df["Status"] == "paid"]
 
-# Show unpaid invoices in one bordered table
+# ❗ Unpaid invoices table
 if not unpaid_df.empty:
     st.markdown("## ❗ Unpaid Invoices")
     for i, row in unpaid_df.iterrows():
@@ -142,12 +142,12 @@ if not unpaid_df.empty:
 else:
     st.info("No unpaid invoices in the filtered list.")
 
-# Show paid invoices
+# ✅ Paid invoices
 if not paid_df.empty:
     st.markdown("## ✅ Paid Invoices")
     st.dataframe(paid_df.style.set_table_attributes('class="styled-table"'), use_container_width=True)
 
-# Edit form
+# ✏️ Edit invoice
 if st.session_state.edit_index is not None:
     idx = st.session_state.edit_index
     row = st.session_state.expenses.loc[idx]
@@ -175,15 +175,20 @@ if st.session_state.edit_index is not None:
             st.success("✅ Invoice updated!")
             st.rerun()
 
-# Totals
-col1, col2 = st.columns(2)
-with col1:
-    st.metric("💰 Total Expenses", f"{filtered_df['Total Price'].sum():,.2f}")
-with col2:
-    unpaid_total = unpaid_df["Total Price"].sum()
-    st.metric("❗ Unpaid Total", f"{unpaid_total:,.2f}")
+# 📊 Totals
+total = filtered_df["Total Price"].sum()
+unpaid_total = unpaid_df["Total Price"].sum()
+paid_total = paid_df["Total Price"].sum()
 
-# Export to Excel
+col1, col2, col3 = st.columns(3)
+with col1:
+    st.metric("💰 Total Expenses", f"{total:,.2f}")
+with col2:
+    st.metric("❗ Unpaid Total", f"{unpaid_total:,.2f}")
+with col3:
+    st.metric("✅ Paid Total", f"{paid_total:,.2f}")
+
+# 📥 Export
 def to_excel(df):
     output = BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
