@@ -5,7 +5,7 @@ from io import BytesIO
 
 st.set_page_config(page_title="Daily Expense Tracker", layout="wide")
 
-# Scoop Company Header
+# Stylish header
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap');
@@ -17,13 +17,20 @@ st.markdown("""
         text-align: center;
         margin-bottom: 10px;
     }
+    .styled-table {
+        border-collapse: collapse;
+        margin: 10px 0;
+        font-size: 16px;
+        width: 100%;
+        border: 2px solid #cccccc;
+    }
     </style>
     <div class="montserrat-title">Scoop Company</div>
 """, unsafe_allow_html=True)
 
 st.title("📘 Daily Expense Entry Web App")
 
-# Session init
+# Initialize session state
 if "expenses" not in st.session_state:
     st.session_state.expenses = pd.DataFrame(columns=[
         "Company", "Subject", "Quantity", "Unit",
@@ -33,7 +40,7 @@ if "expenses" not in st.session_state:
 if "edit_index" not in st.session_state:
     st.session_state.edit_index = None
 
-# Add new expense
+# Add new invoice
 st.subheader("➕ Add New Expense")
 common_units = ["kg", "L", "box", "carton", "piece"]
 
@@ -42,11 +49,11 @@ with st.form("add_expense", clear_on_submit=True):
     with col1:
         company = st.text_input("Company")
         subject = st.text_input("Subject")
-        quantity = st.number_input("Quantity", min_value=0.0, format="%.2f")
+        quantity = st.number_input("Quantity", min_value=0.0)
         selected_unit = st.selectbox("Choose Unit", common_units)
         custom_unit = st.text_input("Or enter custom unit")
         unit = custom_unit if custom_unit else selected_unit
-        price = st.number_input("Price per Unit", min_value=0.0, format="%.2f")
+        price = st.number_input("Price per Unit", min_value=0.0)
     with col2:
         currency = st.selectbox("Currency", ["IQD", "$"])
         date = st.date_input("Date", value=datetime.date.today())
@@ -66,10 +73,10 @@ with st.form("add_expense", clear_on_submit=True):
             "Status": status
         }
         st.session_state.expenses = st.session_state.expenses._append(new_entry, ignore_index=True)
-        st.success("✅ Added!")
+        st.success("✅ Expense added successfully!")
         st.rerun()
 
-# Sidebar filters
+# Filters
 st.sidebar.header("🔍 Filter Expenses")
 df = st.session_state.expenses
 
@@ -102,39 +109,45 @@ if not filtered_df.empty and "unpaid" in filtered_df["Status"].values:
             st.session_state.expenses.apply(tuple, axis=1).isin(filtered_df.apply(tuple, axis=1))
         )
         st.session_state.expenses.loc[mask, "Status"] = "paid"
-        st.success(f"✅ {mask.sum()} invoices marked as paid!")
+        st.success(f"✅ {mask.sum()} entries marked as paid!")
         st.rerun()
 else:
-    st.info("No unpaid invoices in current filter.")
+    st.info("No unpaid expenses in the current filter.")
 
-# Show editable table
-st.subheader("📄 All Invoices")
+# Separate filtered data
+unpaid_df = filtered_df[filtered_df["Status"] == "unpaid"]
+paid_df = filtered_df[filtered_df["Status"] == "paid"]
 
-if not filtered_df.empty:
-    edited_rows = []
-    for i, row in filtered_df.iterrows():
-        col1, col2, col3, col4, col5 = st.columns([2, 2, 2, 1, 1])
-        with col1:
-            st.write(f"**{row['Company']}**")
-            st.write(row["Subject"])
-        with col2:
+# Show unpaid invoices in one bordered table
+if not unpaid_df.empty:
+    st.markdown("## ❗ Unpaid Invoices")
+    for i, row in unpaid_df.iterrows():
+        cols = st.columns([3, 2, 2, 1, 1])
+        with cols[0]:
+            st.write(f"**{row['Company']}** — {row['Subject']}")
+        with cols[1]:
             st.write(f"{row['Quantity']} {row['Unit']}")
             st.write(f"{row['Price per Unit']} {row['Currency']}")
-        with col3:
+        with cols[2]:
             st.write(f"💰 {row['Total Price']} {row['Currency']}")
-            st.write(f"{row['Date']} | {row['Status']}")
-        with col4:
-            if st.button("✏️ Edit", key=f"edit_{i}"):
+            st.write(f"{row['Date']}")
+        with cols[3]:
+            if st.button("✏️", key=f"edit_{i}"):
                 st.session_state.edit_index = i
-        with col5:
-            if st.button("🗑 Delete", key=f"delete_{i}"):
+        with cols[4]:
+            if st.button("🗑", key=f"delete_{i}"):
                 st.session_state.expenses.drop(index=i, inplace=True)
                 st.session_state.expenses.reset_index(drop=True, inplace=True)
                 st.rerun()
 else:
-    st.info("No invoices match the current filters.")
+    st.info("No unpaid invoices in the filtered list.")
 
-# Edit mode form
+# Show paid invoices
+if not paid_df.empty:
+    st.markdown("## ✅ Paid Invoices")
+    st.dataframe(paid_df.style.set_table_attributes('class="styled-table"'), use_container_width=True)
+
+# Edit form
 if st.session_state.edit_index is not None:
     idx = st.session_state.edit_index
     row = st.session_state.expenses.loc[idx]
@@ -159,18 +172,18 @@ if st.session_state.edit_index is not None:
                 currency, total, date, status
             ]
             st.session_state.edit_index = None
-            st.success("✅ Updated!")
+            st.success("✅ Invoice updated!")
             st.rerun()
 
-# Summary
+# Totals
 col1, col2 = st.columns(2)
 with col1:
     st.metric("💰 Total Expenses", f"{filtered_df['Total Price'].sum():,.2f}")
 with col2:
-    unpaid = filtered_df[filtered_df["Status"] == "unpaid"]["Total Price"].sum()
-    st.metric("❗ Unpaid Total", f"{unpaid:,.2f}")
+    unpaid_total = unpaid_df["Total Price"].sum()
+    st.metric("❗ Unpaid Total", f"{unpaid_total:,.2f}")
 
-# Excel export
+# Export to Excel
 def to_excel(df):
     output = BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
