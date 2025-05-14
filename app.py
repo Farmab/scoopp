@@ -92,12 +92,33 @@ if not filtered_df.empty:
     summary.columns = ["Company", "Total Owed"]
     st.dataframe(summary)
 
-    # Download buttons
-    st.subheader("⬇️ Export Options")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.download_button("Download Invoices (Excel)", filtered_df.to_excel(index=False, engine='openpyxl'), file_name="invoices.xlsx")
-    with col2:
-        st.download_button("Download Summary (Excel)", summary.to_excel(index=False, engine='openpyxl'), file_name="summary.xlsx")
-else:
-    st.info("No matching invoices to display.")
+    import io
+
+# Create Excel buffer in memory
+invoice_buffer = io.BytesIO()
+summary_buffer = io.BytesIO()
+
+# Write dataframes to Excel files in memory
+with pd.ExcelWriter(invoice_buffer, engine='openpyxl') as writer:
+    filtered_df.to_excel(writer, index=False, sheet_name='Invoices')
+invoice_buffer.seek(0)
+
+with pd.ExcelWriter(summary_buffer, engine='openpyxl') as writer:
+    summary.to_excel(writer, index=False, sheet_name='Summary')
+summary_buffer.seek(0)
+
+# Streamlit download buttons
+st.download_button(
+    label="Download Invoices (Excel)",
+    data=invoice_buffer,
+    file_name="invoices.xlsx",
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+)
+
+st.download_button(
+    label="Download Summary (Excel)",
+    data=summary_buffer,
+    file_name="summary.xlsx",
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+)
+
