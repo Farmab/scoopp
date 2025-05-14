@@ -5,7 +5,7 @@ from io import BytesIO
 
 st.set_page_config(page_title="Daily Expense Tracker", layout="wide")
 
-# Stylish Header
+# Stylish Header with CSS
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap');
@@ -17,12 +17,32 @@ st.markdown("""
         text-align: center;
         margin-bottom: 10px;
     }
+    .gradient-box {
+        padding: 20px;
+        border-radius: 15px;
+        color: white;
+        text-align: center;
+        font-size: 18px;
+        font-weight: bold;
+        margin-bottom: 15px;
+    }
+    .total { background: linear-gradient(135deg, #1e3c72, #2a5298); }
+    .unpaid { background: linear-gradient(135deg, #8e0e00, #1f1c18); }
+    .paid { background: linear-gradient(135deg, #11998e, #38ef7d); }
     .styled-table {
-        border-collapse: collapse;
-        margin: 10px 0;
-        font-size: 16px;
         width: 100%;
-        border: 2px solid #cccccc;
+        border-collapse: collapse;
+        font-size: 16px;
+        margin-top: 15px;
+    }
+    .styled-table th, .styled-table td {
+        border: 1px solid #ccc;
+        padding: 10px;
+        text-align: center;
+    }
+    .styled-table th {
+        background-color: #f2f2f2;
+        font-weight: bold;
     }
     </style>
     <div class="montserrat-title">Scoop Company</div>
@@ -30,7 +50,7 @@ st.markdown("""
 
 st.title("📘 Daily Expense Entry Web App")
 
-# Initialize session state
+# Initialize session
 if "expenses" not in st.session_state:
     st.session_state.expenses = pd.DataFrame(columns=[
         "Company", "Subject", "Quantity", "Unit",
@@ -40,7 +60,7 @@ if "expenses" not in st.session_state:
 if "edit_index" not in st.session_state:
     st.session_state.edit_index = None
 
-# ➕ Add New Invoice
+# Add new invoice
 st.subheader("➕ Add New Expense")
 common_units = ["kg", "L", "box", "carton", "piece"]
 
@@ -76,7 +96,7 @@ with st.form("add_expense", clear_on_submit=True):
         st.success("✅ Expense added successfully!")
         st.rerun()
 
-# 🔍 Filters
+# Filters
 st.sidebar.header("Filter Expenses")
 df = st.session_state.expenses
 
@@ -101,7 +121,7 @@ if len(date_range) == 2:
         (filtered_df["Date"] <= pd.to_datetime(date_range[1]))
     ]
 
-# 🔄 Bulk unpaid to paid
+# Bulk unpaid to paid
 st.markdown("### 🔄 Monthly Payment Update")
 if not filtered_df.empty and "unpaid" in filtered_df["Status"].values:
     if st.button("✅ Mark All Filtered Unpaid as Paid"):
@@ -114,11 +134,24 @@ if not filtered_df.empty and "unpaid" in filtered_df["Status"].values:
 else:
     st.info("No unpaid expenses in the current filter.")
 
-# Split filtered data
+# Split data
 unpaid_df = filtered_df[filtered_df["Status"] == "unpaid"]
 paid_df = filtered_df[filtered_df["Status"] == "paid"]
 
-# ❗ Unpaid Table
+# Summary cards
+total = filtered_df["Total Price"].sum()
+unpaid_total = unpaid_df["Total Price"].sum()
+paid_total = paid_df["Total Price"].sum()
+
+col1, col2, col3 = st.columns(3)
+with col1:
+    st.markdown(f'<div class="gradient-box total">💰 Total Expenses<br>{total:,.2f}</div>', unsafe_allow_html=True)
+with col2:
+    st.markdown(f'<div class="gradient-box unpaid">❗ Unpaid Total<br>{unpaid_total:,.2f}</div>', unsafe_allow_html=True)
+with col3:
+    st.markdown(f'<div class="gradient-box paid">✅ Paid Total<br>{paid_total:,.2f}</div>', unsafe_allow_html=True)
+
+# Unpaid section
 if not unpaid_df.empty:
     st.markdown("## ❗ Unpaid Invoices")
     for i, row in unpaid_df.iterrows():
@@ -139,29 +172,26 @@ if not unpaid_df.empty:
                 st.session_state.expenses.drop(index=i, inplace=True)
                 st.session_state.expenses.reset_index(drop=True, inplace=True)
                 st.rerun()
-else:
-    st.info("No unpaid invoices in the filtered list.")
 
-# ✅ Paid Table with delete buttons
+# Paid section
 if not paid_df.empty:
     st.markdown("## ✅ Paid Invoices")
-    for i, row in paid_df.iterrows():
-        cols = st.columns([3, 2, 2, 1])
-        with cols[0]:
-            st.write(f"**{row['Company']}** — {row['Subject']}")
-        with cols[1]:
-            st.write(f"{row['Quantity']} {row['Unit']}")
-            st.write(f"{row['Price per Unit']} {row['Currency']}")
-        with cols[2]:
-            st.write(f"💰 {row['Total Price']} {row['Currency']}")
-            st.write(f"{row['Date']}")
-        with cols[3]:
-            if st.button("🗑", key=f"delete_paid_{i}"):
-                st.session_state.expenses.drop(index=i, inplace=True)
-                st.session_state.expenses.reset_index(drop=True, inplace=True)
-                st.rerun()
+    styled_df = paid_df.reset_index().rename(columns={"index": "#"})
+    for i, row in styled_df.iterrows():
+        st.markdown("<table class='styled-table'><tr>" +
+                    f"<td><b>{row['Company']}</b> — {row['Subject']}</td>" +
+                    f"<td>{row['Quantity']} {row['Unit']}</td>" +
+                    f"<td>{row['Price per Unit']} {row['Currency']}</td>" +
+                    f"<td>{row['Total Price']} {row['Currency']}</td>" +
+                    f"<td>{row['Date']}</td>" +
+                    f"<td><form><button name='delete_paid_{row['#']}' type='submit'>🗑</button></form></td>" +
+                    "</tr></table>", unsafe_allow_html=True)
+        if st.button("🗑", key=f"delete_paid_{row['#']}"):
+            st.session_state.expenses.drop(index=row['#'], inplace=True)
+            st.session_state.expenses.reset_index(drop=True, inplace=True)
+            st.rerun()
 
-# ✏️ Edit Form
+# Edit form
 if st.session_state.edit_index is not None:
     idx = st.session_state.edit_index
     row = st.session_state.expenses.loc[idx]
@@ -189,20 +219,7 @@ if st.session_state.edit_index is not None:
             st.success("✅ Invoice updated!")
             st.rerun()
 
-# 📊 Totals
-total = filtered_df["Total Price"].sum()
-unpaid_total = unpaid_df["Total Price"].sum()
-paid_total = paid_df["Total Price"].sum()
-
-col1, col2, col3 = st.columns(3)
-with col1:
-    st.metric("💰 Total Expenses", f"{total:,.2f}")
-with col2:
-    st.metric("❗ Unpaid Total", f"{unpaid_total:,.2f}")
-with col3:
-    st.metric("✅ Paid Total", f"{paid_total:,.2f}")
-
-# 📥 Excel Export
+# Download Excel
 def to_excel(df):
     output = BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
