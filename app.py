@@ -13,7 +13,9 @@ st.markdown("""
         font-family: 'Montserrat', sans-serif;
         font-weight: 700;
         font-size: 40px;
-        color: #333333;
+        color: yellow;
+        text-align: center;
+        margin-bottom: 10px;
     }
     </style>
     <div class="montserrat-title">Scoop Company</div>
