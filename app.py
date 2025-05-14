@@ -45,7 +45,9 @@ with st.sidebar.form("entry_form"):
     quantity = st.number_input("Quantity", min_value=0.0, step=0.1)
     unit = st.selectbox("Unit", ["Carton", "Box", "Kilogram", "Liter", "Piece"])
     price_per_unit = st.number_input("Price per Unit", min_value=0.0, step=0.1)
+    currency = st.radio("Currency", ["IQD", "USD"])
     submitted = st.form_submit_button("Add Invoice")
+
 
     if submitted:
         total_price = quantity * price_per_unit
